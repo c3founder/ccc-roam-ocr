@@ -101,7 +101,7 @@ const panelConfig = {
 
 /* Begin Importing Utility Functions */
 function onload({ extensionAPI }) {
-    ocrParams.lang1 = setSettingDefault(extensionAPI, "lang1", '');
+    ocrParams.lang1 = setSettingDefault(extensionAPI, "lang1", 'eng');
     ocrParams.lang2 = setSettingDefault(extensionAPI, "lang2", '');
     ocrParams.appId = setSettingDefault(extensionAPI, "mathpix-app-id", '');
     ocrParams.appKey = setSettingDefault(extensionAPI, "mathpix-app-key", '');
