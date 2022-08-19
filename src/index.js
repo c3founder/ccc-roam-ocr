@@ -99,6 +99,157 @@ const panelConfig = {
     ]
 };
 
+let ccc = {};
+
+ccc.util = {
+    ///////////////Front-End///////////////
+    getUidOfContainingBlock: (el) => {
+        return el.closest('.rm-block__input').id.slice(-9)
+    },
+
+    insertAfter: (newEl, anchor) => {
+        anchor.parentElement.insertBefore(newEl, anchor.nextSibling)
+    },
+
+    getNthChildUid: (parentUid, order) => {
+        const allChildren = c3u.allChildrenInfo(parentUid)[0][0].children;
+        const childrenOrder = allChildren.map(function (child) { return child.order; });
+        const index = childrenOrder.findIndex(el => el === order);
+        return index !== -1 ? allChildren[index].uid : null;
+    },
+
+    sleep: m => new Promise(r => setTimeout(r, m)),
+
+    createPage: (pageTitle) => {
+        let pageUid = c3u.createUid()
+        const status = window.roamAlphaAPI.createPage(
+            {
+                "page":
+                { "title": pageTitle, "uid": pageUid }
+            })
+        return status ? pageUid : null
+    },
+
+    updateBlockString: (blockUid, newString) => {
+        return window.roamAlphaAPI.updateBlock({
+            block: { uid: blockUid, string: newString }
+        });
+    },
+
+    hashCode: (str) => {
+        let hash = 0, i, chr;
+        for (i = 0; i < str.length; i++) {
+            chr = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + chr;
+            hash |= 0; // Convert to 32bit integer
+        }
+        return hash;
+    },
+
+    createChildBlock: (parentUid, order, childString, childUid) => {
+        return window.roamAlphaAPI.createBlock(
+            {
+                location: { "parent-uid": parentUid, order: order },
+                block: { string: childString.toString(), uid: childUid }
+            })
+    },
+
+    openBlockInSidebar: (windowType, blockUid) => {
+        return window.roamAlphaAPI.ui.rightSidebar.addWindow({ window: { type: windowType, 'block-uid': blockUid } })
+    },
+
+    deletePage: (pageUid) => {
+        return window.roamAlphaAPI.deletePage({ page: { uid: pageUid } });
+    },
+
+
+    createUid: () => {
+        return roamAlphaAPI.util.generateUID();
+    },
+
+
+
+    ///////////////Back-End///////////////
+    existBlockUid: (blockUid) => {
+        const res = window.roamAlphaAPI.q(
+            `[:find (pull ?block [:block/uid])
+        :where
+               [?block :block/uid \"${blockUid}\"]]`)
+        return res.length ? blockUid : null
+    },
+
+    deleteBlock: (blockUid) => {
+        return window.roamAlphaAPI.deleteBlock({ "block": { "uid": blockUid } });
+    },
+
+    parentBlockUid: (blockUid) => {
+        const res = window.roamAlphaAPI.q(
+            `[:find (pull ?parent [:block/uid])
+        :where
+            [?parent :block/children ?block]
+               [?block :block/uid \"${blockUid}\"]]`)
+        return res.length ? res[0][0].uid : null
+    },
+
+    blockString: (blockUid) => {
+        return window.roamAlphaAPI.q(
+            `[:find (pull ?block [:block/string])
+        :where [?block :block/uid \"${blockUid}\"]]`)[0][0].string
+    },
+
+    allChildrenInfo: (blockUid) => {
+        let results = window.roamAlphaAPI.q(
+            `[:find (pull ?parent 
+                [* {:block/children [:block/string :block/uid :block/order]}])
+      :where
+          [?parent :block/uid \"${blockUid}\"]]`)
+        return (results.length == 0) ? undefined : results
+
+    },
+
+    queryAllTxtInChildren: (blockUid) => {
+        return window.roamAlphaAPI.q(`[
+            :find (pull ?block [
+                :block/string
+                {:block/children ...}
+            ])
+            :where [?block :block/uid \"${blockUid}\"]]`)
+    },
+
+    getPageUid: (pageTitle) => {
+        const res = window.roamAlphaAPI.q(
+            `[:find (pull ?page [:block/uid])
+        :where [?page :node/title \"${pageTitle}\"]]`)
+        return res.length ? res[0][0].uid : null
+    },
+
+    getOrCreatePageUid: (pageTitle, initString = null) => {
+        let pageUid = c3u.getPageUid(pageTitle)
+        if (!pageUid) {
+            pageUid = c3u.createPage(pageTitle);
+            if (initString)
+                c3u.createChildBlock(pageUid, 0, initString, c3u.createUid());
+        }
+        return pageUid;
+    },
+
+    isAncestor: (a, b) => {
+        const results = window.roamAlphaAPI.q(
+            `[:find (pull ?root [* {:block/children [:block/uid {:block/children ...}]}])
+            :where
+                [?root :block/uid \"${a}\"]]`);
+        if (!results.length) return false;
+        let descendantUids = [];
+        c3u.getUidFromNestedNodes(results[0][0], descendantUids)
+        return descendantUids.includes(b);
+    },
+
+    getUidFromNestedNodes: (node, descendantUids) => {
+        if (node.uid) descendantUids.push(node.uid)
+        if (node.children)
+            node.children.forEach(child => c3u.getUidFromNestedNodes(child, descendantUids))
+    }
+};
 
 /* Begin Importing Utility Functions */
 function onload({ extensionAPI }) {
@@ -111,22 +262,9 @@ function onload({ extensionAPI }) {
 
     extensionAPI.settings.panel.create(panelConfig);
 
-
-    console.log("onload")
-    if (typeof ccc !== 'undefined' && typeof ccc.util !== 'undefined') {
-        //Somebody has already loaded the utility
-        startC3OcrExtension();
-    } else {
-        let s = document.createElement("script");
-        s.type = "text/javascript";
-        s.src = "https://c3founder.github.io/Roam-Enhancement/enhancedUtility.js"
-        s.id = 'c3util4ocr'
-        s.onload = () => { startC3OcrExtension() }
-        try { document.getElementById('c3util').remove() } catch (e) { };
-        document.getElementsByTagName('head')[0].appendChild(s);
-    }
+    console.log("onload");
+    startC3OcrExtension();
     extensionAPI.settings.panel.create(panelConfig);
-
 }
 
 function setSettingDefault(extensionAPI, settingId, settingDefault) {
@@ -135,17 +273,16 @@ function setSettingDefault(extensionAPI, settingId, settingDefault) {
     return storedSetting || settingDefault;
 }
 
+
 function onunload() {
     Mousetrap.bind(ocrParams.cleanKey);
     observerImg.disconnect();
 }
 
-
 /* End Importing Utility Functions */
 let observerImg;
 
 function startC3OcrExtension() {
-    var ccc = window.ccc || {};
     var c3u = ccc.util;
     let parsedStr = '';
 
@@ -259,10 +396,10 @@ function bindShortkeys() {
         e.preventDefault();
         const activeTxt = document.querySelector('textarea.rm-block-input');
         let recognizedTxt = activeTxt.value;
-        const blockUid = window.ccc.util.getUidOfContainingBlock(activeTxt);
-        const parentUid = window.ccc.util.parentBlockUid(blockUid);
-        window.ccc.util.deleteBlock(blockUid);
-        window.ccc.util.updateBlockString(parentUid, recognizedTxt);
+        const blockUid = ccc.util.getUidOfContainingBlock(activeTxt);
+        const parentUid = ccc.util.parentBlockUid(blockUid);
+        ccc.util.deleteBlock(blockUid);
+        ccc.util.updateBlockString(parentUid, recognizedTxt);
         return false;
     }, 'keydown');
 }
