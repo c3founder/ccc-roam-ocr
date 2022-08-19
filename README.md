@@ -16,9 +16,12 @@ This extension OCRs images that you have on your roam graph.
 	- APP ID and KEY: You need to set up a mathpix account and get an app id and key. Read more about mathpix great service [here](https://mathpix.com/#features). And find their API [here](https://docs.mathpix.com/#introduction).
 
 # YouTube Demos
-	- New tutorial: 
-	[![ocrwithcors](https://img.youtube.com/vi/N8DOqIZQFLU/0.jpg)](https://www.youtube.com/watch?v=N8DOqIZQFLU)
 
-	- Older tutorial:
-	[![ocrgist](https://img.youtube.com/vi/BSVxxDsZVNQ/0.jpg)](https://youtu.be/BSVxxDsZVNQ)
+New tutorial
 
+[![ocrwithcors](https://img.youtube.com/vi/N8DOqIZQFLU/0.jpg)](https://www.youtube.com/watch?v=N8DOqIZQFLU)
+
+
+Older tutorial
+
+[![ocrgist](https://img.youtube.com/vi/BSVxxDsZVNQ/0.jpg)](https://youtu.be/BSVxxDsZVNQ)
