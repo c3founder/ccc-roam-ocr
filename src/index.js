@@ -263,6 +263,7 @@ function onload({ extensionAPI }) {
     extensionAPI.settings.panel.create(panelConfig);
 
     console.log("onload");
+    bindShortkeys();
     startC3OcrExtension();
     extensionAPI.settings.panel.create(panelConfig);
 }
@@ -272,7 +273,6 @@ function setSettingDefault(extensionAPI, settingId, settingDefault) {
     if (null == storedSetting) extensionAPI.settings.set(settingId, settingDefault);
     return storedSetting || settingDefault;
 }
-
 
 function onunload() {
     Mousetrap.bind(ocrParams.cleanKey);
@@ -403,9 +403,6 @@ function bindShortkeys() {
         return false;
     }, 'keydown');
 }
-
-
-
 
 export default {
     onload: onload,
