@@ -1,3 +1,5 @@
+import Tesseract from 'tesseract.js';
+
 // let ocrParams = {
 //     lang1: "eng", //Shift + Click
 //     lang2: "ara", //Alt + Click
@@ -111,13 +113,6 @@ function onload({ extensionAPI }) {
 
     console.log("onload")
     /* Begin Importing Other Packages */
-    if (!document.getElementById("Tesseract")) {
-        let s = document.createElement("script");
-        s.type = "text/javascript";
-        s.src = "https://unpkg.com/tesseract.js@2.0.0/dist/tesseract.min.js";
-        s.id = "Tesseract"
-        document.getElementsByTagName("head")[0].appendChild(s);
-    }
     if (!document.getElementById("Mousetrap")) {
         let s = document.createElement("script");
         s.type = "text/javascript";
