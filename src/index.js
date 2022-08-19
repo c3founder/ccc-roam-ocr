@@ -260,9 +260,6 @@ function onload({ extensionAPI }) {
     ocrParams.saveRef2Img = setSettingDefault(extensionAPI, "save-ref2Image", false);
     ocrParams.cleanKey = setSettingDefault(extensionAPI, "cleanup-shortcut", '');
 
-    extensionAPI.settings.panel.create(panelConfig);
-
-    console.log("onload");
     bindShortkeys();
     startC3OcrExtension();
     extensionAPI.settings.panel.create(panelConfig);
