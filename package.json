@@ -1,0 +1,16 @@
+{
+    "name": "ccc-roam-ocr",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "build": "webpack",
+        "watch": "webpack --watch"
+    },
+    "devDependencies": {
+        "webpack": "^5.73.0",
+        "webpack-cli": "^4.10.0"
+    },
+    "dependencies": {
+    }
+}
