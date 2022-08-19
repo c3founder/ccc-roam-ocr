@@ -42,6 +42,7 @@ const panelConfig = {
         {
             id: "lang1",
             name: "Language 1 Code",
+            description: "Used when holding shift and clicking on an image",
             action: {
                 type: "select",
                 items: [...allLang],
@@ -51,6 +52,7 @@ const panelConfig = {
         {
             id: "lang2",
             name: "Language 2 Code",
+            description: "Used when holding alt and clicking on an image",
             action: {
                 type: "select",
                 items: [...allLang],
@@ -322,7 +324,7 @@ function startC3OcrExtension() {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
 
-        tempImg.src = "https://ccc-cors-anywhere.herokuapp.com/" + e.target.src //+ "?not-from-cache-please"
+        tempImg.src = "https://ccc-cors-anywhere.herokuapp.com/" + e.target.src; //+ "?not-from-cache-please"
         let str = tempImg.onload = async function () {
             let ocrStr;
             canvas.width = tempImg.width;
@@ -337,7 +339,7 @@ function startC3OcrExtension() {
             if (e.altKey) {
                 ocrStr = await parseLan(tempImg, ocrParams.lang2);
             }
-            return ocrStr
+            return ocrStr;
         }();
         return str;
     }
