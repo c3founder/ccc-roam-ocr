@@ -1,4 +1,5 @@
 import Tesseract from 'tesseract.js';
+import Mousetrap from 'mousetrap';
 
 // let ocrParams = {
 //     lang1: "eng", //Shift + Click
@@ -112,17 +113,6 @@ function onload({ extensionAPI }) {
 
 
     console.log("onload")
-    /* Begin Importing Other Packages */
-    if (!document.getElementById("Mousetrap")) {
-        let s = document.createElement("script");
-        s.type = "text/javascript";
-        s.src = "https://unpkg.com/mousetrap@1.6.5/mousetrap.js";
-        s.id = "Mousetrap"
-        s.onload = () => { bindShortkeys() }
-        document.getElementsByTagName("head")[0].appendChild(s);
-    }
-    /* End Importing Other Packages */
-
     if (typeof ccc !== 'undefined' && typeof ccc.util !== 'undefined') {
         //Somebody has already loaded the utility
         startC3OcrExtension();

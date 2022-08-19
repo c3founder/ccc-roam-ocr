@@ -12,6 +12,7 @@
         "webpack-cli": "^4.10.0"
     },
     "dependencies": {
+        "mousetrap": "^1.6.5",
         "tesseract.js": "^2.0.0"
     }
 }
