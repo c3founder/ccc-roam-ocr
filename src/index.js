@@ -1,3 +1,6 @@
+import Tesseract from 'tesseract.js';
+import Mousetrap from 'mousetrap';
+
 // let ocrParams = {
 //     lang1: "eng", //Shift + Click
 //     lang2: "ara", //Alt + Click
@@ -39,6 +42,7 @@ const panelConfig = {
         {
             id: "lang1",
             name: "Language 1 Code",
+            description: "Used when holding shift and clicking on an image",
             action: {
                 type: "select",
                 items: [...allLang],
@@ -48,6 +52,7 @@ const panelConfig = {
         {
             id: "lang2",
             name: "Language 2 Code",
+            description: "Used when holding alt and clicking on an image",
             action: {
                 type: "select",
                 items: [...allLang],
@@ -96,52 +101,172 @@ const panelConfig = {
     ]
 };
 
+let ccc = {};
+
+ccc.util = ((c3u) => {
+    ///////////////Front-End///////////////
+    c3u.getUidOfContainingBlock = (el) => {
+        return el.closest('.rm-block__input').id.slice(-9)
+    }
+
+    c3u.insertAfter = (newEl, anchor) => {
+        anchor.parentElement.insertBefore(newEl, anchor.nextSibling)
+    }
+
+    c3u.getNthChildUid = (parentUid, order) => {
+        const allChildren = c3u.allChildrenInfo(parentUid)[0][0].children;
+        const childrenOrder = allChildren.map(function (child) { return child.order; });
+        const index = childrenOrder.findIndex(el => el === order);
+        return index !== -1 ? allChildren[index].uid : null;
+    }
+
+    c3u.sleep = m => new Promise(r => setTimeout(r, m))
+
+    c3u.createPage = (pageTitle) => {
+        let pageUid = c3u.createUid()
+        const status = window.roamAlphaAPI.createPage(
+            {
+                "page":
+                { "title": pageTitle, "uid": pageUid }
+            })
+        return status ? pageUid : null
+    }
+
+    c3u.updateBlockString = (blockUid, newString) => {
+        return window.roamAlphaAPI.updateBlock({
+            block: { uid: blockUid, string: newString }
+        });
+    }
+
+    c3u.hashCode = (str) => {
+        let hash = 0, i, chr;
+        for (i = 0; i < str.length; i++) {
+            chr = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + chr;
+            hash |= 0; // Convert to 32bit integer
+        }
+        return hash;
+    }
+
+    c3u.createChildBlock = (parentUid, order, childString, childUid) => {
+        return window.roamAlphaAPI.createBlock(
+            {
+                location: { "parent-uid": parentUid, order: order },
+                block: { string: childString.toString(), uid: childUid }
+            })
+    }
+
+    c3u.openBlockInSidebar = (windowType, blockUid) => {
+        return window.roamAlphaAPI.ui.rightSidebar.addWindow({ window: { type: windowType, 'block-uid': blockUid } })
+    }
+
+    c3u.deletePage = (pageUid) => {
+        return window.roamAlphaAPI.deletePage({ page: { uid: pageUid } });
+    }
+
+
+    c3u.createUid = () => {
+        return roamAlphaAPI.util.generateUID();
+    }
+
+
+
+    ///////////////Back-End///////////////
+    c3u.existBlockUid = (blockUid) => {
+        const res = window.roamAlphaAPI.q(
+            `[:find (pull ?block [:block/uid])
+        :where
+               [?block :block/uid \"${blockUid}\"]]`)
+        return res.length ? blockUid : null
+    }
+
+    c3u.deleteBlock = (blockUid) => {
+        return window.roamAlphaAPI.deleteBlock({ "block": { "uid": blockUid } });
+    }
+
+    c3u.parentBlockUid = (blockUid) => {
+        const res = window.roamAlphaAPI.q(
+            `[:find (pull ?parent [:block/uid])
+        :where
+            [?parent :block/children ?block]
+               [?block :block/uid \"${blockUid}\"]]`)
+        return res.length ? res[0][0].uid : null
+    }
+
+    c3u.blockString = (blockUid) => {
+        return window.roamAlphaAPI.q(
+            `[:find (pull ?block [:block/string])
+        :where [?block :block/uid \"${blockUid}\"]]`)[0][0].string
+    }
+
+    c3u.allChildrenInfo = (blockUid) => {
+        let results = window.roamAlphaAPI.q(
+            `[:find (pull ?parent 
+                [* {:block/children [:block/string :block/uid :block/order]}])
+      :where
+          [?parent :block/uid \"${blockUid}\"]]`)
+        return (results.length == 0) ? undefined : results
+
+    }
+
+    c3u.queryAllTxtInChildren = (blockUid) => {
+        return window.roamAlphaAPI.q(`[
+            :find (pull ?block [
+                :block/string
+                {:block/children ...}
+            ])
+            :where [?block :block/uid \"${blockUid}\"]]`)
+    }
+
+    c3u.getPageUid = (pageTitle) => {
+        const res = window.roamAlphaAPI.q(
+            `[:find (pull ?page [:block/uid])
+        :where [?page :node/title \"${pageTitle}\"]]`)
+        return res.length ? res[0][0].uid : null
+    }
+
+    c3u.getOrCreatePageUid = (pageTitle, initString = null) => {
+        let pageUid = c3u.getPageUid(pageTitle)
+        if (!pageUid) {
+            pageUid = c3u.createPage(pageTitle);
+            if (initString)
+                c3u.createChildBlock(pageUid, 0, initString, c3u.createUid());
+        }
+        return pageUid;
+    }
+
+    c3u.isAncestor = (a, b) => {
+        const results = window.roamAlphaAPI.q(
+            `[:find (pull ?root [* {:block/children [:block/uid {:block/children ...}]}])
+            :where
+                [?root :block/uid \"${a}\"]]`);
+        if (!results.length) return false;
+        let descendantUids = [];
+        c3u.getUidFromNestedNodes(results[0][0], descendantUids)
+        return descendantUids.includes(b);
+    }
+
+    c3u.getUidFromNestedNodes = (node, descendantUids) => {
+        if (node.uid) descendantUids.push(node.uid)
+        if (node.children)
+            node.children.forEach(child => c3u.getUidFromNestedNodes(child, descendantUids))
+    }
+
+    return c3u;
+})(ccc.util || {});
 
 /* Begin Importing Utility Functions */
 function onload({ extensionAPI }) {
-    ocrParams.lang1 = setSettingDefault(extensionAPI, "lang1", '');
+    ocrParams.lang1 = setSettingDefault(extensionAPI, "lang1", 'eng');
     ocrParams.lang2 = setSettingDefault(extensionAPI, "lang2", '');
     ocrParams.appId = setSettingDefault(extensionAPI, "mathpix-app-id", '');
     ocrParams.appKey = setSettingDefault(extensionAPI, "mathpix-app-key", '');
     ocrParams.saveRef2Img = setSettingDefault(extensionAPI, "save-ref2Image", false);
     ocrParams.cleanKey = setSettingDefault(extensionAPI, "cleanup-shortcut", '');
 
+    bindShortkeys();
+    startC3OcrExtension();
     extensionAPI.settings.panel.create(panelConfig);
-
-
-    console.log("onload")
-    /* Begin Importing Other Packages */
-    if (!document.getElementById("Tesseract")) {
-        let s = document.createElement("script");
-        s.type = "text/javascript";
-        s.src = "https://unpkg.com/tesseract.js@2.0.0/dist/tesseract.min.js";
-        s.id = "Tesseract"
-        document.getElementsByTagName("head")[0].appendChild(s);
-    }
-    if (!document.getElementById("Mousetrap")) {
-        let s = document.createElement("script");
-        s.type = "text/javascript";
-        s.src = "https://unpkg.com/mousetrap@1.6.5/mousetrap.js";
-        s.id = "Mousetrap"
-        s.onload = () => { bindShortkeys() }
-        document.getElementsByTagName("head")[0].appendChild(s);
-    }
-    /* End Importing Other Packages */
-
-    if (typeof ccc !== 'undefined' && typeof ccc.util !== 'undefined') {
-        //Somebody has already loaded the utility
-        startC3OcrExtension();
-    } else {
-        let s = document.createElement("script");
-        s.type = "text/javascript";
-        s.src = "https://c3founder.github.io/Roam-Enhancement/enhancedUtility.js"
-        s.id = 'c3util4ocr'
-        s.onload = () => { startC3OcrExtension() }
-        try { document.getElementById('c3util').remove() } catch (e) { };
-        document.getElementsByTagName('head')[0].appendChild(s);
-    }
-    extensionAPI.settings.panel.create(panelConfig);
-
 }
 
 function setSettingDefault(extensionAPI, settingId, settingDefault) {
@@ -155,12 +280,10 @@ function onunload() {
     observerImg.disconnect();
 }
 
-
 /* End Importing Utility Functions */
 let observerImg;
 
 function startC3OcrExtension() {
-    var ccc = window.ccc || {};
     var c3u = ccc.util;
     let parsedStr = '';
 
@@ -203,7 +326,7 @@ function startC3OcrExtension() {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
 
-        tempImg.src = "https://ccc-cors-anywhere.herokuapp.com/" + e.target.src //+ "?not-from-cache-please"
+        tempImg.src = "https://ccc-cors-anywhere.herokuapp.com/" + e.target.src; //+ "?not-from-cache-please"
         let str = tempImg.onload = async function () {
             let ocrStr;
             canvas.width = tempImg.width;
@@ -218,7 +341,7 @@ function startC3OcrExtension() {
             if (e.altKey) {
                 ocrStr = await parseLan(tempImg, ocrParams.lang2);
             }
-            return ocrStr
+            return ocrStr;
         }();
         return str;
     }
@@ -274,16 +397,13 @@ function bindShortkeys() {
         e.preventDefault();
         const activeTxt = document.querySelector('textarea.rm-block-input');
         let recognizedTxt = activeTxt.value;
-        const blockUid = window.ccc.util.getUidOfContainingBlock(activeTxt);
-        const parentUid = window.ccc.util.parentBlockUid(blockUid);
-        window.ccc.util.deleteBlock(blockUid);
-        window.ccc.util.updateBlockString(parentUid, recognizedTxt);
+        const blockUid = ccc.util.getUidOfContainingBlock(activeTxt);
+        const parentUid = ccc.util.parentBlockUid(blockUid);
+        ccc.util.deleteBlock(blockUid);
+        ccc.util.updateBlockString(parentUid, recognizedTxt);
         return false;
     }, 'keydown');
 }
-
-
-
 
 export default {
     onload: onload,
